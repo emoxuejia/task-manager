@@ -8,6 +8,7 @@ import { useTasks } from './composables/useTasks.js'
 const { tasks, addTask, updateTask, deleteTask } = useTasks()
 const editingTask = ref(null)
 const isFormOpen = ref(false)
+const draggedTaskId = ref(null)
 const columns = [
   { id: 'todo', title: '待办', accent: 'border-slate-300' },
   { id: 'in-progress', title: '进行中', accent: 'border-blue-400' },
@@ -26,6 +27,18 @@ function saveTask(values) {
 function removeTask(task) {
   if (window.confirm(`确定要删除“${task.title}”吗？`)) deleteTask(task.id)
 }
+function startDrag(task, event) {
+  draggedTaskId.value = task.id
+  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.setData('text/plain', task.id)
+}
+function endDrag() { draggedTaskId.value = null }
+function dropTask(status, event) {
+  const id = event.dataTransfer.getData('text/plain') || draggedTaskId.value
+  const task = tasks.value.find((item) => item.id === id)
+  if (task && task.status !== status) updateTask(id, { status })
+  endDrag()
+}
 </script>
 
 <template>
@@ -42,13 +55,29 @@ function removeTask(task) {
       </div>
 
       <div class="mt-9 grid gap-5 lg:grid-cols-3">
-        <section v-for="column in columns" :key="column.id" class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <section
+          v-for="column in columns"
+          :key="column.id"
+          class="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition"
+          :class="draggedTaskId ? 'ring-2 ring-indigo-200 ring-offset-2' : ''"
+          @dragover.prevent
+          @drop="dropTask(column.id, $event)"
+        >
           <div class="flex items-center justify-between border-l-4 pl-3" :class="column.accent">
             <h2 class="font-semibold">{{ column.title }}</h2>
             <span class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500">{{ tasksByStatus[column.id].length }}</span>
           </div>
           <div v-if="tasksByStatus[column.id].length" class="mt-4 space-y-3">
-            <TaskCard v-for="task in tasksByStatus[column.id]" :key="task.id" :task="task" @edit="openEditForm(task)" @delete="removeTask(task)" />
+            <TaskCard
+              v-for="task in tasksByStatus[column.id]"
+              :key="task.id"
+              :task="task"
+              :is-dragging="draggedTaskId === task.id"
+              @edit="openEditForm(task)"
+              @delete="removeTask(task)"
+              @dragstart="startDrag(task, $event)"
+              @dragend="endDrag"
+            />
           </div>
           <p v-else class="py-12 text-center text-sm text-slate-400">暂无任务</p>
         </section>

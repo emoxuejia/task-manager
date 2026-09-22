@@ -1,6 +1,9 @@
 <script setup>
-defineProps({ task: { type: Object, required: true } })
-defineEmits(['edit', 'delete'])
+defineProps({
+  task: { type: Object, required: true },
+  isDragging: { type: Boolean, default: false },
+})
+defineEmits(['edit', 'delete', 'dragstart', 'dragend'])
 
 const priorityStyles = {
   high: 'bg-red-50 text-red-700 ring-red-200',
@@ -11,7 +14,13 @@ const priorityLabels = { high: '高', medium: '中', low: '低' }
 </script>
 
 <template>
-  <article class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+  <article
+    class="cursor-grab rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition active:cursor-grabbing"
+    :class="isDragging ? 'opacity-40' : ''"
+    draggable="true"
+    @dragstart="$emit('dragstart', $event)"
+    @dragend="$emit('dragend')"
+  >
     <div class="flex items-start justify-between gap-3">
       <h3 class="font-semibold leading-6 text-slate-800">{{ task.title }}</h3>
       <span class="shrink-0 rounded-full px-2 py-1 text-xs font-semibold ring-1 ring-inset" :class="priorityStyles[task.priority]">{{ priorityLabels[task.priority] }}优先级</span>
