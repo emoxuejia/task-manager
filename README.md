@@ -34,6 +34,14 @@ npm run build
 npm run preview
 ```
 
+## 启用 Supabase 跨设备同步
+
+1. 在 Supabase 新建项目，并在 SQL Editor 执行 `supabase/schema.sql`。
+2. 复制 `.env.example` 为 `.env.local`，填入项目的 URL 与 **Publishable key**。
+3. 在 Supabase Authentication 中启用 Email 登录。注册后按项目设置完成邮箱验证。
+
+浏览器端只能使用 Publishable key；不要将 `service_role` 或 secret key 写入 `.env.local`。未配置 Supabase 时，应用仍使用浏览器本地存储。
+
 ## 项目结构
 
 ```text

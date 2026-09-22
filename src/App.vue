@@ -1,11 +1,14 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import AppHeader from './components/AppHeader.vue'
+import AuthPanel from './components/AuthPanel.vue'
 import TaskCard from './components/TaskCard.vue'
 import TaskForm from './components/TaskForm.vue'
 import { useTasks } from './composables/useTasks.js'
+import { isSupabaseConfigured, supabase } from './lib/supabase.js'
 
-const { tasks, addTask, updateTask, deleteTask } = useTasks()
+const { tasks, addTask, updateTask, deleteTask, syncForUser } = useTasks()
+const currentUser = ref(null)
 const editingTask = ref(null)
 const isFormOpen = ref(false)
 const draggedTaskId = ref(null)
@@ -43,6 +46,16 @@ function dropTask(status, event) {
   endDrag()
 }
 function toggleTheme() { theme.value = isDark.value ? 'light' : 'dark' }
+async function signIn(credentials) { const { data, error } = await supabase.auth.signInWithPassword(credentials); if (error) throw error; currentUser.value = data.user; await syncForUser(data.user) }
+async function signUp(credentials) { const { error } = await supabase.auth.signUp(credentials); if (error) throw error }
+async function signOut() { await supabase.auth.signOut(); currentUser.value = null }
+onMounted(async () => {
+  if (!isSupabaseConfigured) return
+  const { data: { user } } = await supabase.auth.getUser()
+  currentUser.value = user
+  if (user) await syncForUser(user)
+  supabase.auth.onAuthStateChange((_event, session) => { currentUser.value = session?.user ?? null; if (session?.user) syncForUser(session.user) })
+})
 </script>
 
 <template>
@@ -54,6 +67,7 @@ function toggleTheme() { theme.value = isDark.value ? 'light' : 'dark' }
           <p class="text-sm font-semibold tracking-wide text-indigo-600">任务工作台</p>
           <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">把计划变成进展</h1>
           <p class="mt-3 text-base leading-7 text-slate-600 dark:text-slate-400">创建、编辑或删除任务；所有更改会自动保存在当前浏览器中。</p>
+          <AuthPanel :configured="isSupabaseConfigured" :user="currentUser" @sign-in="signIn" @sign-up="signUp" @sign-out="signOut" />
         </div>
         <button class="rounded-xl bg-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2" type="button" @click="openCreateForm">+ 新建任务</button>
       </div>
